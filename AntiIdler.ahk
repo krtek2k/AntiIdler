@@ -3,22 +3,27 @@
 ; Author:    krtek2k
 ; Github:    https://github.com/krtek2k/AntiIdler
 ; Date:      2024-02-04
-; Version:   1.0
+; Version:   1.1
 
 /*
  * Prevents from Windows idling for more than predetermined cooldown.
- * Useful to never go into inactive status or lock down Windows due inactivity
+ * Useful to never go into inactive status or lock down Windows due inactivity.
  */
  
 #Requires Autohotkey v2.0+
 #SingleInstance Force
-#WinActivateForce
 
 AntiIdler()
 
 class AntiIdler {
+
+	;//https://docs.microsoft.com/en-us/windows/win32/api/winbase/nf-winbase-setthreadexecutionstate
+	static WS_ES_CONTINUOUS 		:= 0x80000000 ; Allows standby again.
+	static WS_ES_DISPLAY_REQUIRED	:= 0x00000002 ; Prevents system and monitor to go standby
+	static WS_ES_SYSTEM_REQUIRED	:= 0x00000001 ; Prevents system but not monitor to go standby
 	static IsCounting := true
 	static MainGui := Gui()
+	
 	__New(*) {
 		OnMessage(0x0020, ObjBindMethod(this, "WM_SETCURSOR")) ; use this to get mouseOver event
 		OnMessage(0x0201, ObjBindMethod(this, "WM_LBUTTONDOWN")) ; drag & move
@@ -33,9 +38,9 @@ class AntiIdler {
 		appTitle := AntiIdler.MainGui.Add("Text", "xm w160 h35 -E0x200 Center", title)
 		appTitle.SetFont("Q5 underline s22 cWhite", "impact")
 		AntiIdler.MainGui.BackColor := "c237FD5"
-		this._ChkAntiIdle := AntiIdler.MainGui.Add("CheckBox", "Checked vChkAntiIdle", "Keep display active")
-		this._ChkAntiSleep := AntiIdler.MainGui.Add("CheckBox", "Checked vChkAntiSleep", "Move mouse 1px")
-		this._ChkAntiAfk := AntiIdler.MainGui.Add("CheckBox", "vChkAntiAfk", "Press modifier keys")
+		this._ChkAntiIdle := AntiIdler.MainGui.Add("CheckBox", "Checked", "Keep display active")
+		this._ChkAntiSleep := AntiIdler.MainGui.Add("CheckBox", "Checked", "Move mouse 1px")
+		this._ChkAntiAfk := AntiIdler.MainGui.Add("CheckBox", "Checked", "Press modifier keys")
 		AntiIdler.MainGui.OnEvent("Escape", ObjBindMethod(this, "GuiClose"))
 		submitBtn := AntiIdler.MainGui.AddButton("+default", "&Confirm && Start")
 		submitBtn.OnEvent("Click", ObjBindMethod(this, "Submit"))
@@ -48,7 +53,7 @@ class AntiIdler {
 		    AntiIdler.MainGui.Flash()
 			countdownText.Text := "(" count ")" ;% (StrLen(count) > 1) ? "(" SubStr(count, 1, 1) "," SubStr(count, 2, 2) ")" : "(" 0 "," SubStr(count, 1, 1) ")" 
 			if (count = 0) {	
-				this.Proceed()
+				this.Heartbeat()
 				break
 			}
 		    Sleep 1000
@@ -56,16 +61,18 @@ class AntiIdler {
 		}
 		countdownText.Text := ""
 	}
+	__Delete() {
+		DllCall("Kernel32.dll\SetThreadExecutionState", "UInt", AntiIdler.WS_ES_CONTINUOUS) ; Allows standby again.
+	}
 	GuiClose(gui) {
-		this.Proceed()
+		this.Heartbeat()
 	}
 	Submit(gui, info) {
-		this.Proceed()
+		this.Heartbeat()
 	}
 	
-	Proceed() {
+	Heartbeat() {
 		WinHide(AntiIdler.MainGui.hwnd)
-		
 		while(true) {
 			if (A_TimeIdle > 59000 && !this.IsWindowFullScreen()) {
 				if (this._ChkAntiIdle.Value)
@@ -80,18 +87,24 @@ class AntiIdler {
 	}
 	
 	AntiSleep() {
-	    DllCall("SetThreadExecutionState", "UInt", 0x80000003)
+	    DllCall("Kernel32.dll\SetThreadExecutionState", "UInt", AntiIdler.WS_ES_DISPLAY_REQUIRED | AntiIdler.WS_ES_SYSTEM_REQUIRED)
 	}
 	
 	AntiIdle() {
-	    MouseMove 0, 1, 0, "R"
+	    MouseMove 0, 1, 0, "R" ; left
 	    Sleep 5
-	    MouseMove 0, -1, 0, "R"
+	    MouseMove 0, -1, 0, "R"	; back
+	    Sleep 5
+		MouseMove 1, 0, 1, "R"  ; right
+	    Sleep 5
+		MouseMove -1, 0, 1, "R" ; back
 	}
 	
 	AntiAfk() {
-	    Send("Shift")
-	    Send("Ctrl")
+		Send "{NumLock}"
+		Send "{NumLock}"
+	    Send "{Shift}"
+	    Send "{Ctrl}"
 	}
 	
 	IsWindowFullScreen() {
