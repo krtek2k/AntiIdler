@@ -27,8 +27,8 @@ class AntiIdler {
 		AntiIdler.MainGui.Opt("AlwaysOnTop -SysMenu -caption +Border ")
 		AntiIdler.MainGui.WordWrap := true
 		AntiIdler.MainGui.HasFocus := true
-		AntiIdler.MainGui.MarginX := 10,
-		AntiIdler.MainGui.MarginY := 10,
+		AntiIdler.MainGui.MarginX := 10
+		AntiIdler.MainGui.MarginY := 10
 	    AntiIdler.MainGui.SetFont("Q5 s10 cWhite", "Verdana")
 		appTitle := AntiIdler.MainGui.Add("Text", "xm w160 h35 -E0x200 Center", title)
 		appTitle.SetFont("Q5 underline s22 cWhite", "impact")
@@ -67,7 +67,7 @@ class AntiIdler {
 		WinHide(AntiIdler.MainGui.hwnd)
 		
 		while(true) {
-			if (A_TimeIdle > 59000 && !this.IsWindowFullScreen) {
+			if (A_TimeIdle > 59000 && !this.IsWindowFullScreen()) {
 				if (this._ChkAntiIdle.Value)
 					this.AntiIdle()
 				if (this._ChkAntiSleep.Value)
