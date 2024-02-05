@@ -3,7 +3,7 @@
 ; Author:    krtek2k
 ; Github:    https://github.com/krtek2k/AntiIdler
 ; Date:      2024-02-04
-; Version:   1.1
+; Version:   1.2
 
 /*
  * Prevents from Windows idling for more than predetermined cooldown.
@@ -16,9 +16,10 @@
 AntiIdler()
 
 class AntiIdler {
-
+	
+	static HeartbeatCooldown := 30000 ; lowest possible value is clamped to 1000
 	;//https://docs.microsoft.com/en-us/windows/win32/api/winbase/nf-winbase-setthreadexecutionstate
-	static WS_ES_CONTINUOUS 		:= 0x80000000 ; Allows standby again.
+	static WS_ES_CONTINUOUS			:= 0x80000000 ; Allows standby again.
 	static WS_ES_DISPLAY_REQUIRED	:= 0x00000002 ; Prevents system and monitor to go standby
 	static WS_ES_SYSTEM_REQUIRED	:= 0x00000001 ; Prevents system but not monitor to go standby
 	static IsCounting := true
@@ -48,7 +49,7 @@ class AntiIdler {
 		countdownText := AntiIdler.MainGui.AddText("x+3 yp+5 w20", "xx")
 		AntiIdler.MainGui.Show("Center AutoSize")
 		
-		count := 6
+		count := 5
 		while (AntiIdler.IsCounting) {
 		    AntiIdler.MainGui.Flash()
 			countdownText.Text := "(" count ")" ;% (StrLen(count) > 1) ? "(" SubStr(count, 1, 1) "," SubStr(count, 2, 2) ")" : "(" 0 "," SubStr(count, 1, 1) ")" 
@@ -74,7 +75,7 @@ class AntiIdler {
 	Heartbeat() {
 		WinHide(AntiIdler.MainGui.hwnd)
 		while(true) {
-			if (A_TimeIdle > 59000 && !this.IsWindowFullScreen()) {
+			if (A_TimeIdle > ((AntiIdler.HeartbeatCooldown < 1000 ? 1000 : AntiIdler.HeartbeatCooldown) -1000) && !this.IsWindowFullScreen()) {
 				if (this._ChkAntiIdle.Value)
 					this.AntiIdle()
 				if (this._ChkAntiSleep.Value)
@@ -82,7 +83,7 @@ class AntiIdler {
 				if (this._ChkAntiAfk.Value)
 					this.AntiAfk()
 			}
-			sleep 60000 ; minute check
+			sleep AntiIdler.HeartbeatCooldown
 		}
 	}
 	
@@ -94,15 +95,9 @@ class AntiIdler {
 	    MouseMove 0, 1, 0, "R" ; left
 	    Sleep 5
 	    MouseMove 0, -1, 0, "R"	; back
-	    Sleep 5
-		MouseMove 1, 0, 1, "R"  ; right
-	    Sleep 5
-		MouseMove -1, 0, 1, "R" ; back
 	}
 	
 	AntiAfk() {
-		Send "{NumLock}"
-		Send "{NumLock}"
 	    Send "{Shift}"
 	    Send "{Ctrl}"
 	}
