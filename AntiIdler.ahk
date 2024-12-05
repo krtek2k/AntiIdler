@@ -3,7 +3,7 @@
 ; Author:    krtek2k
 ; Github:    https://github.com/krtek2k/AntiIdler
 ; Date:      2024-02-04
-; Version:   1.2
+; Version:   1.3
 
 /*
  * Prevents from Windows idling for more than predetermined cooldown.
