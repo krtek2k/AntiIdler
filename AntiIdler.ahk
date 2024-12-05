@@ -17,6 +17,7 @@ AntiIdler()
 
 class AntiIdler {
 	
+	static Monitors:=[]
 	static HeartbeatCooldown := 30000 ; lowest possible value is clamped to 1000
 	;//https://docs.microsoft.com/en-us/windows/win32/api/winbase/nf-winbase-setthreadexecutionstate
 	static WS_ES_CONTINUOUS			:= 0x80000000 ; Allows standby again.
@@ -26,6 +27,14 @@ class AntiIdler {
 	static MainGui := Gui()
 	
 	__New(*) {
+		loop MonitorGetCount()
+		{
+			local Left, Top, Right, Bottom
+			MonitorGet(A_Index, &Left, &Top, &Right, &Bottom)
+			AntiIdler.Monitors.Push({l:Left,t:Top,r:Right,b:Bottom})
+		}
+		
+		MouseMove 0, 0 ; out of center screen
 		OnMessage(0x0020, ObjBindMethod(this, "WM_SETCURSOR")) ; use this to get mouseOver event
 		OnMessage(0x0201, ObjBindMethod(this, "WM_LBUTTONDOWN")) ; drag & move
 		title := "Anti idler"
@@ -75,7 +84,7 @@ class AntiIdler {
 	Heartbeat() {
 		WinHide(AntiIdler.MainGui.hwnd)
 		while(true) {
-			if (A_TimeIdle > ((AntiIdler.HeartbeatCooldown < 1000 ? 1000 : AntiIdler.HeartbeatCooldown) -1000) && !this.IsWindowFullScreen()) {
+			if (A_TimeIdle > ((AntiIdler.HeartbeatCooldown < 1000 ? 1000 : AntiIdler.HeartbeatCooldown) -1000) && !this.IsFullScreen()) {
 				if (this._ChkAntiIdle.Value)
 					this.AntiIdle()
 				if (this._ChkAntiSleep.Value)
@@ -83,6 +92,7 @@ class AntiIdler {
 				if (this._ChkAntiAfk.Value)
 					this.AntiAfk()
 			}
+
 			sleep AntiIdler.HeartbeatCooldown
 		}
 	}
@@ -106,12 +116,37 @@ class AntiIdler {
 		;checks if the active window is full screen
 		WinID := WinExist("A") 
 		if (!WinID)
-			return		
+			return false	
 		style := WinGetStyle(WinID)
 		; 0x800000 is WS_BORDER.
 		; 0x20000000 is WS_MINIMIZE.
 		; no border and not minimized
 		return (style & 0x20800000) ? false : true	
+	}
+	
+	IsFullScreen() {
+		;checks if the active window is full screen
+		local uid:=WinExist("A")
+		if(!uid)
+			return false
+			
+		local wid:="ahk_id " uid
+		c:=WinGetClass(wid)
+		If (uid = DllCall("GetDesktopWindow") Or (c = "Progman") Or (c = "WorkerW"))
+			return false
+			
+		local cx, cy, cw, ch
+		WinGetClientPos(&cx,&cy,&cw,&ch,wid)
+		cl:=cx
+		ct:=cy
+		cr:=cx+cw
+		cb:=cy+ch
+		For , v in AntiIdler.Monitors
+		{
+			if(cl==v.l and ct==v.t and cr==v.r and cb==v.b)
+				Return True
+		}
+		return false
 	}
 	
 	WM_SETCURSOR(wParam, lParam, msg, hwnd) {
